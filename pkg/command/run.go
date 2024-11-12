@@ -7,6 +7,7 @@ import (
 	"github.com/wilelm123/mydocker/pkg/cgroups"
 	"github.com/wilelm123/mydocker/pkg/cgroups/subsystems"
 	"github.com/wilelm123/mydocker/pkg/container"
+	"github.com/wilelm123/mydocker/pkg/network"
 	"math/rand"
 	"os"
 	"strconv"
@@ -43,6 +44,24 @@ func Run(tty bool, cmdArr []string, res *subsystems.ResourceConfig, containerNam
 
 	if nw != "" {
 		network.Init()
+		containerInfo := &container.ContainerInfo{
+			Id:          containerId,
+			Pid:         strconv.Itoa(parent.Process.Pid),
+			Name:        containerName,
+			PortMapping: portmapping,
+		}
+		if err := network.Connect(nw, containerInfo); err != nil {
+			log.Errorf("error connect network %s", err)
+			return
+		}
+	}
+
+	sendInitCommand(cmdArr, writePipe)
+
+	if tty {
+		parent.Wait()
+		deleteContainerInfo(containerName)
+		container.DeleteWorkSpace(volume, containerName)
 	}
 }
 
